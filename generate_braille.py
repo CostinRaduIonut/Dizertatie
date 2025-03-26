@@ -1,21 +1,11 @@
-import keras
 import numpy as np
-import tensorflow as tf
-import string
-import cv2 as cv
+import cv2 as cv 
+import string 
 import uuid
-import zipfile
-import random
-import os
-from itertools import islice, product
-
-from PIL import Image
-import string
-import itertools
-import random
-
 litere = string.digits + string.ascii_uppercase + "abdefghnqrt"
 classes = [x for x in litere]
+import zipfile
+import os
 number_symbol = [
     [0, 1],
     [0, 1],
@@ -435,88 +425,6 @@ characters = {
     ],
 }
 
-chars_braille = characters
-
-canShowBraille = False
-
-# model = keras.models.load_model("nn_letters_to_braille_updated")
-model = tf.keras.models.load_model(r"nn_letters_to_braille_updated", compile=False)
-
-
-def detect_subimage(image):
-    img_tensor = image[:]
-    # img_tensor = tf.keras.preprocessing.image.img_to_array(image)
-    img_tensor = tf.expand_dims(img_tensor, -1)
-    img_tensor = tf.expand_dims(img_tensor, 0)
-    img_tensor = tf.cast(img_tensor, tf.float32)
-    img_tensor /= 255.0
-    # img_tensor = tf.image.resize(img_tensor, (28, 28))
-    prediction = model.predict(img_tensor)
-    prediction = prediction[0]
-    return classes[np.argmax(prediction)], np.max(prediction)
-
-
-def draw_braille(img, xpos, ypos, pattern):
-    dist = 8
-    radius = 2
-    rows = len(pattern)
-    cols = len(pattern[0])
-   
-    for i in range(len(pattern)):
-        for j in range(len(pattern[0])):
-            top_left = (xpos -5, ypos -5)
-            bottom_right = (xpos + cols * dist - 2 , ypos + rows * dist-2)
-            cv.rectangle(img, top_left, bottom_right, (0, 0, 0), 1)
-            color = (255, 255, 255)
-            if pattern[i][j] == 1:
-                color = (0, 0, 0)
-            cv.circle(img, (xpos + j * dist, ypos + i * dist),
-                      radius, color, thickness=2)
-
-def string_to_braille(text: str, check_spelling=False, is_audio = False):
-    # tts_braille.generate_speech(text)
-    # print("TEXT:", text)
-    image_width = 512
-    image_height = 512
-    braille_width = 16
-    braille_height = 32
-    px = 16
-    py = 16
-    imgs_braille = []
-    img_braille = 255 * np.ones((image_height, image_width, 1))
-    y = py * 2
-    right = px // 2
-    print(f"is_audio = {is_audio}")
-    for i, letter in enumerate(text):
-        if right < image_width - px * 4:
-            right += braille_width + px // 2
-        else:
-            if y < image_height - py * 4:
-                y += braille_height + py // 2
-            else:
-                y = py * 2
-                # ffname = "braille_detectat/" + str(uuid.uuid4()) + ".jpg"
-                # cv.imwrite(ffname, img_braille)
-                imgs_braille.append(img_braille)
-                img_braille = 255 * np.ones((image_height, image_width, 1))
-
-            right = px * 2
-
-        if letter in characters.keys():
-            draw_braille(img_braille, right, y, characters[letter])
-        else:
-            right += braille_width - 4
-
-    if len(imgs_braille) > 1:
-        merged_img = np.vstack(imgs_braille)
-    else:
-        merged_img = img_braille
-    ffname = "braille_detectat/" + str(uuid.uuid4()) + ".jpg"
-    cv.imwrite(ffname, merged_img)
-
-    return text, ffname
-
-
 
 def generate_combinations_and_braille():
     pangrams = [
@@ -589,6 +497,66 @@ def generate_combinations_and_braille():
     print(f"Braille images saved in: {zip_filename}")
     return zip_filename
 
-# generate_combinations_and_braille
 
-string_to_braille("hello world")
+def draw_braille(img, xpos, ypos, pattern):
+    dist = 8
+    radius = 2
+    rows = len(pattern)
+    cols = len(pattern[0])
+   
+    for i in range(len(pattern)):
+        for j in range(len(pattern[0])):
+            top_left = (xpos -5, ypos -5)
+            bottom_right = (xpos + cols * dist - 2 , ypos + rows * dist-2)
+            cv.rectangle(img, top_left, bottom_right, (0, 0, 0), 1)
+            color = (255, 255, 255)
+            if pattern[i][j] == 1:
+                color = (0, 0, 0)
+            cv.circle(img, (xpos + j * dist, ypos + i * dist),
+                      radius, color, thickness=2)
+
+def string_to_braille(text: str, check_spelling=False, is_audio = False):
+    # tts_braille.generate_speech(text)
+    # print("TEXT:", text)
+    image_width = 1024
+    image_height = 512
+    braille_width = 16
+    braille_height = 32
+    px = 16
+    py = 16
+    imgs_braille = []
+    img_braille = 255 * np.ones((image_height, image_width, 1))
+    y = py * 2
+    right = px // 2
+    for i, letter in enumerate(text):
+        if right < image_width - px * 4:
+            right += braille_width + px // 2
+        else:
+            if y < image_height - py * 4:
+                y += braille_height + py // 2
+            else:
+                y = py * 2
+                # ffname = "braille_detectat/" + str(uuid.uuid4()) + ".jpg"
+                # cv.imwrite(ffname, img_braille)
+                imgs_braille.append(img_braille)
+                img_braille = 255 * np.ones((image_height, image_width, 1))
+
+            right = px * 2
+
+        if letter in characters.keys():
+            draw_braille(img_braille, right, y, characters[letter])
+        else:
+            # right += braille_width - 4
+            pass
+
+    if len(imgs_braille) > 1:
+        merged_img = np.vstack(imgs_braille)
+    else:
+        merged_img = img_braille
+    ffname = "braille_detectat/" + str(uuid.uuid4()) + ".jpg"
+    cv.imwrite(ffname, merged_img)
+
+    return text, ffname
+
+
+generate_combinations_and_braille()
