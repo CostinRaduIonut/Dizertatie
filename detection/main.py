@@ -3,6 +3,7 @@ import cv2 as cv
 import numpy as np 
 import torch
 from torchvision.ops import nms
+import os 
 
 # model = YOLO("detection/yolo11n.pt")  # load a pretrained model (recommended for training)
 
@@ -11,11 +12,8 @@ from torchvision.ops import nms
 # success = model.export(format="onnx")
 
 
-model = YOLO("runs/detect/train2/weights/best.pt")  # load a pretrained model (recommended for training)
-results = model.predict("braille_detectat/ezgif-frame-005.jpg")
-valid_boxes = results[0].boxes.xyxy 
-boxes = []
-img = cv.imread("braille_detectat/ezgif-frame-005.jpg")
+model = YOLO("runs/detect/train6/weights/best.pt")  # load a pretrained model (recommended for training)
+
 
 import cv2
 import numpy as np
@@ -80,7 +78,15 @@ def recover_missing_boxes_with_nms(image_path, yolo_boxes):
 
 
 # Path to the test image
-image_path = "braille_detectat/ezgif-frame-005.jpg"
+image_path = "braille_detectat/"
 
 # Run recovery
-final_boxes = recover_missing_boxes_with_nms(image_path, valid_boxes)
+# final_boxes = recover_missing_boxes_with_nms(image_path, valid_boxes)
+
+r = model.predict(source='braille_detectat/', save=True)
+
+listdr = os.listdir("runs/detect/predict")
+
+for i, result in enumerate(r):
+    recover_missing_boxes_with_nms("braille_detectat/" + listdr[i], result.cpu)
+

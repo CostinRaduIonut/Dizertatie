@@ -1,2 +1,3 @@
 detection/detection_dataset/
-runs/
+braille_detectat/
+runs/detect/predict
