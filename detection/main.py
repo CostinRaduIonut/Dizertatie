@@ -1,92 +1,86 @@
 from ultralytics import YOLO
-import cv2 as cv 
-import numpy as np 
-import torch
-from torchvision.ops import nms
-import os 
-
-# model = YOLO("detection/yolo11n.pt")  # load a pretrained model (recommended for training)
-
-# results = model.train(data="detection/detection_dataset/data.yaml", epochs=30, imgsz=640)
-
-# success = model.export(format="onnx")
-
-
-model = YOLO("runs/detect/train6/weights/best.pt")  # load a pretrained model (recommended for training)
-
-
-import cv2
+import cv2 as cv
 import numpy as np
+import os
+import scipy
 
-def is_close(box1, box2, threshold=5):
-    x1a, y1a, x2a, y2a = box1
-    x1b, y1b, x2b, y2b = box2
-    return abs(x1a - x1b) < threshold and abs(y1a - y1b) < threshold and \
-           abs(x2a - x2b) < threshold and abs(y2a - y2b) < threshold
+model = YOLO("runs/detect/train6_good/weights/best.pt")
 
-def recover_missing_boxes_with_nms(image_path, yolo_boxes):
-    image = cv2.imread(image_path)
+tolerance = 0.4
+kernel = np.ones((3, 3), np.uint8)  # Slightly smaller kernel for dilation
 
-    # Convert YOLO boxes to Python tuples
-    yolo_boxes_np = [tuple(map(int, box.cpu().numpy())) for box in yolo_boxes]
+# Load images
+filenames = os.listdir("detection/detection_dataset/test/images/")
+filenames = [filenames[8]]  # Test single image
 
-    # Calculate average area of YOLO-detected boxes
-    areas = [(x2 - x1) * (y2 - y1) for (x1, y1, x2, y2) in yolo_boxes_np]
-    avg_area = np.mean(areas)
-    area_tolerance = 0.3  # 30% area tolerance
+for filename in filenames:
+    fullpath = f"detection/detection_dataset/test/images/{filename}"
+    result = model.predict(source=fullpath)
+    boxes_xyxy = result[0].boxes.xyxy.tolist()
+    img = cv.imread(fullpath, cv.IMREAD_GRAYSCALE)
+    
+    print(f"\nProcessing {fullpath}")
 
-    # Extract all contours
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    edges = cv2.Canny(gray, 50, 150)
-    contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for box in boxes_xyxy:
+        x1, y1, x2, y2 = map(int, box)
+        img_braille = img[y1:y2, x1:x2]
+        img_area = img_braille.shape[0] * img_braille.shape[1]
 
-    recovered_boxes = []
-    for cnt in contours:
-        x, y, w, h = cv2.boundingRect(cnt)
-        contour_area = w * h
+        # Preprocess
+        img_braille = cv.dilate(img_braille, kernel, iterations=1)  # Helps merge dots if fragmented
+        cimg = cv.cvtColor(img_braille, cv.COLOR_GRAY2BGR)
+        _, thresh = cv.threshold(img_braille, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
 
-        if avg_area * (1 - area_tolerance) < contour_area < avg_area * (1 + area_tolerance):
-            already_detected = any(is_close((x, y, x + w, y + h), existing_box) for existing_box in yolo_boxes_np)
-            if not already_detected:
-                recovered_boxes.append((x, y, x + w, y + h))
+        contours, _ = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
+        cnt_data = []
 
-    # Combine YOLO and recovered boxes
-    all_boxes = yolo_boxes_np + recovered_boxes
+        for cnt in contours:
+            (x, y), radius = cv.minEnclosingCircle(cnt)
+            center = (int(x), int(y))
+            radius = int(radius)
+            area = np.pi * (radius ** 2)  # Fixed area formula
+            rect_x, rect_y, w, h = cv.boundingRect(cnt)
+            rect_area = w * h
+            aspect_ratio = w / h if h != 0 else 0
+            extent = cv.contourArea(cnt) / rect_area if rect_area != 0 else 0
+            hull = cv.convexHull(cnt)
+            hull_area = cv.contourArea(hull)
+            solidity = cv.contourArea(cnt) / hull_area if hull_area != 0 else 0
+            cnt_data.append((center, radius, area, rect_area, aspect_ratio, extent, solidity))
 
-    # Prepare boxes and scores for NMS
-    all_boxes_tensor = torch.tensor(all_boxes, dtype=torch.float32)
-    scores = torch.cat([
-        torch.ones(len(yolo_boxes_np)),                      # High confidence for YOLO boxes
-        torch.full((len(recovered_boxes),), 0.5)             # Lower confidence for recovered boxes
-    ])
+        # Area filtering
+        areas = np.array([circle[2] for circle in cnt_data])
+        avg_area = np.mean(areas)
+        print(f"Average detected area: {avg_area:.2f}")
 
-    # Apply NMS to remove redundant boxes
-    iou_threshold = 0.4
-    nms_indices = nms(all_boxes_tensor, scores, iou_threshold)
-    nms_boxes = all_boxes_tensor[nms_indices].int().tolist()
+        # First filter: reasonable size
+        circle_candidates = []
+        for circle in cnt_data:
+            radius = circle[1]
+            rect_area = circle[3]
+            if radius > 3 and (rect_area / img_area) < 0.95:
+                circle_candidates.append(circle)
 
-    # Draw NMS filtered boxes on the image
-    for x1, y1, x2, y2 in nms_boxes:
-        cv2.rectangle(image, (x1, y1), (x2, y2), (255, 0, 0), 2)
+        # Refined filter: aspect ratio, extent, solidity, area tolerance
+        filtered = []
+        for circle in circle_candidates:
+            area = circle[2]
+            aspect_ratio = circle[4]
+            extent = circle[5]
+            solidity = circle[6]
+            if ((1 - tolerance) * avg_area <= area <= (1 + tolerance) * avg_area and
+                0.6 <= aspect_ratio <= 1.4 and
+                extent >= 0.6 and
+                solidity >= 0.8):
+                filtered.append(circle)
 
-    cv2.imshow("NMS Filtered Detections", image)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-    return nms_boxes
-
-
-
-# Path to the test image
-image_path = "braille_detectat/"
-
-# Run recovery
-# final_boxes = recover_missing_boxes_with_nms(image_path, valid_boxes)
-
-r = model.predict(source='braille_detectat/', save=True)
-
-listdr = os.listdir("runs/detect/predict")
-
-for i, result in enumerate(r):
-    recover_missing_boxes_with_nms("braille_detectat/" + listdr[i], result.cpu)
-
+        # Draw debug visuals
+        for circle in circle_candidates:
+            cv.circle(cimg, circle[0], circle[1], (255, 0, 0), 1)  # Blue: all candidates
+        for circle in filtered:
+            cv.circle(cimg, circle[0], circle[1], (0, 255, 0), 1)  # Green: filtered
+        
+        print(f"Candidates: {len(circle_candidates)} | Filtered: {len(filtered)}")
+        cv.imshow("Braille Dots", cimg)
+        cv.waitKey(0)
+        cv.destroyAllWindows()
