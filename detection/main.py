@@ -11,13 +11,14 @@ kernel = np.ones((3, 3), np.uint8)  # Slightly smaller kernel for dilation
 
 # Load images
 filenames = os.listdir("detection/detection_dataset/test/images/")
-filenames = [filenames[8]]  # Test single image
+filenames = ["0e74f47f-ccec-4ee5-af4a-9d8334be3573_png.rf.3638872fa1aef478828dddaa0785b877.jpg"]  # Test single image
 
 for filename in filenames:
     fullpath = f"detection/detection_dataset/test/images/{filename}"
     result = model.predict(source=fullpath)
     boxes_xyxy = result[0].boxes.xyxy.tolist()
     img = cv.imread(fullpath, cv.IMREAD_GRAYSCALE)
+    im_height, im_width = img.shape
     
     print(f"\nProcessing {fullpath}")
 
@@ -28,6 +29,7 @@ for filename in filenames:
 
         # Preprocess
         img_braille = cv.dilate(img_braille, kernel, iterations=1)  # Helps merge dots if fragmented
+        b_height, b_width = img_braille.shape
         cimg = cv.cvtColor(img_braille, cv.COLOR_GRAY2BGR)
         _, thresh = cv.threshold(img_braille, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
 
@@ -73,14 +75,20 @@ for filename in filenames:
                 extent >= 0.6 and
                 solidity >= 0.8):
                 filtered.append(circle)
-
-        # Draw debug visuals
-        for circle in circle_candidates:
-            cv.circle(cimg, circle[0], circle[1], (255, 0, 0), 1)  # Blue: all candidates
-        for circle in filtered:
-            cv.circle(cimg, circle[0], circle[1], (0, 255, 0), 1)  # Green: filtered
+        points = list(map(lambda c: (c[0][0], c[0][1]), circle_candidates))
+        points_normalized = list(map(lambda p: (p[0] / b_width, p[1] / b_height), points))
         
-        print(f"Candidates: {len(circle_candidates)} | Filtered: {len(filtered)}")
-        cv.imshow("Braille Dots", cimg)
-        cv.waitKey(0)
-        cv.destroyAllWindows()
+        temp = []
+        
+        for p in points_normalized:
+            x = p[0]
+            y = p[1]
+            col = 0 if x < .5 else 1 
+            if y < 0.33:
+                row = 0
+            elif y > 0.66:
+                row = 2
+            else:
+                row = 1
+            temp.append((col, row))
+        print(temp)
