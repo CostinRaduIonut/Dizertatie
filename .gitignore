@@ -1,3 +1,5 @@
 detection/detection_dataset/
 braille_detectat/
 runs/detect/predict
+temp/
+detection/recognition_dataset/
