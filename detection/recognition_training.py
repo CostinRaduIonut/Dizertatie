@@ -1,99 +1,108 @@
-import keras.activations
-from keras.layers import Dense, Conv2D, MaxPool2D, Input, Flatten, Rescaling, Dropout, BatchNormalization, Activation
-from keras.models import Sequential, Model
+import tensorflow as tf
+from tensorflow.keras.layers import (
+    Dense, Conv2D, MaxPooling2D, Flatten,
+    Input, Rescaling, Dropout, BatchNormalization, Activation
+)
+from tensorflow.keras.models import Model
 from tensorflow.keras.utils import image_dataset_from_directory
+from keras.preprocessing.image import ImageDataGenerator
 import matplotlib.pyplot as plt
-import keras
+import os
 
-# sterge
+datagen = ImageDataGenerator(rotation_range=20,
+                             shear_range=10,
+                             validation_split=0.2)
 
-
-# incarcam seturile de date pentru antrenare si predictii
-gdrive = "/detection/recognition_dataset/"
-
-image_shape = (28, 28, 1)
-image_size = (image_shape[0], image_shape[1])
+# Path to dataset (adjust as needed)
+base_dir = "detection/recognition_dataset/"
+image_shape = (28, 28, 3)
+image_size = image_shape[:2]
 BATCH_SIZE = 16
 
-data_training = image_dataset_from_directory(
-    gdrive + "training_data",
-    image_size = image_size,
-    batch_size = BATCH_SIZE,
-    label_mode = "int"
+# Load datasets
+# train_data = image_dataset_from_directory(
+#     os.path.join(base_dir, "train"),
+#     image_size=image_size,
+#     batch_size=BATCH_SIZE,
+#     color_mode="grayscale",
+#     label_mode="int"
+# )
+
+# val_data = image_dataset_from_directory(
+#     os.path.join(base_dir, "validation"),
+#     image_size=image_size,
+#     batch_size=BATCH_SIZE,
+#     color_mode="grayscale",
+#     label_mode="int"
+# )
+
+train_data = datagen.flow_from_directory(
+    base_dir,
+    target_size=(28, 28),
+    subset='training'
 )
 
-
-
-validation_data = image_dataset_from_directory(
-    gdrive + "validation_data",
-    image_size = image_size,
-    batch_size = BATCH_SIZE,
-    label_mode = "int"
+valid_data = datagen.flow_from_directory(
+    base_dir,
+    target_size=(28, 28),
+    subset='validation'
 )
 
-
-
-
-# construim un model de retea neuronala convolutionala
+# CNN Model
 def get_model():
-    intrari = Input(image_shape)
-    x = Rescaling(1./ 255)(intrari)
-    x = Conv2D(filters=32, kernel_size=3)(intrari)
+    inputs = Input(shape=image_shape)
+    x = Rescaling(1. / 255)(inputs)
+
+    x = Conv2D(64, 3, padding="same")(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
-    x = MaxPool2D(pool_size=2)(x)
-    x = Conv2D(filters=64, kernel_size=3)(x)
+    x = MaxPooling2D(pool_size=2)(x)
+
+    x = Conv2D(128, 3, padding="same")(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
-    x = MaxPool2D(pool_size=2)(x)
-    x = Conv2D(filters=256, kernel_size=3)(x)
+    x = MaxPooling2D(pool_size=2)(x)
+
+    x = Conv2D(256, 3, padding="same")(x)
     x = BatchNormalization()(x)
     x = Activation("relu")(x)
 
     x = Flatten()(x)
-    x = Dropout(.5)(x)
+    x = Dropout(0.5)(x)
 
-    iesiri = Dense(36, activation="softmax")(x)
-    model = Model(inputs=intrari, outputs=iesiri)
+    outputs = Dense(26, activation="softmax")(x)
+    return Model(inputs, outputs)
 
-    return model
-
-
+# Build and compile model
 model = get_model()
-
 model.summary()
 model.compile(
-    optimizer = "adam",
-    loss = "sparse_categorical_crossentropy",
-    metrics = ["accuracy"],
-
+    optimizer="adam",
+    loss="categorical_crossentropy",
+    metrics=["accuracy"]
 )
 
-
-
-rezultat = model.fit(
-    data_training,
-    epochs = 12,
-    validation_data = validation_data
-    
+# Train model
+history = model.fit(
+    train_data,
+    validation_data=valid_data,
+    epochs=100
 )
 
+# Save model
 model.save("nn_braille")
 
-acuratete = rezultat.history["accuracy"]
-val_acuratete = rezultat.history["val_accuracy"]
-cost = rezultat.history["loss"]
-val_cost = rezultat.history["val_loss"]
-epoci = range(1, len(acuratete) + 1)
+# Plot results
+epochs = range(1, len(history.history["accuracy"]) + 1)
 
-plt.plot(epoci, acuratete, "bo", label = "Acuratetea antrenarii")
-plt.plot(epoci, val_acuratete, "b", label = "Acuratetea validarii")
-plt.title("Acuratetea antrenarii si validarii")
+plt.plot(epochs, history.history["accuracy"], "bo", label="Training Accuracy")
+plt.plot(epochs, history.history["val_accuracy"], "b", label="Validation Accuracy")
+plt.title("Training and Validation Accuracy")
 plt.legend()
 plt.figure()
 
-plt.plot(epoci, cost, "bo", label = "Costul antrenarii")
-plt.plot(epoci, val_cost, "b", label = "Costul validarii")
-plt.title("Costul antrenarii si validarii")
+plt.plot(epochs, history.history["loss"], "ro", label="Training Loss")
+plt.plot(epochs, history.history["val_loss"], "r", label="Validation Loss")
+plt.title("Training and Validation Loss")
 plt.legend()
 plt.show()
