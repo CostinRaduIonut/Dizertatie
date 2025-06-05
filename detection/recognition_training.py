@@ -19,23 +19,6 @@ image_shape = (28, 28, 3)
 image_size = image_shape[:2]
 BATCH_SIZE = 16
 
-# Load datasets
-# train_data = image_dataset_from_directory(
-#     os.path.join(base_dir, "train"),
-#     image_size=image_size,
-#     batch_size=BATCH_SIZE,
-#     color_mode="grayscale",
-#     label_mode="int"
-# )
-
-# val_data = image_dataset_from_directory(
-#     os.path.join(base_dir, "validation"),
-#     image_size=image_size,
-#     batch_size=BATCH_SIZE,
-#     color_mode="grayscale",
-#     label_mode="int"
-# )
-
 train_data = datagen.flow_from_directory(
     base_dir,
     target_size=(28, 28),
