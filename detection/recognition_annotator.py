@@ -6,6 +6,7 @@ from tkinter import Tk, Button, Label, Frame, Canvas, filedialog
 from PIL import Image, ImageTk
 from ultralytics import YOLO
 from uuid import uuid4
+import json 
 
 MODEL_PATH = "runs/detect/train6_good/weights/best.pt"
 SOURCE_DIR = "braille_detectat"
@@ -17,8 +18,11 @@ class AnnotatorGUI:
         self.model = YOLO(MODEL_PATH)
         self.image_files = [f for f in os.listdir(SOURCE_DIR) if f.lower().endswith(('.jpg', '.png'))]
         self.current_file_index = 0
+        self.checkpoint_file = "checkpoint.json"
+        self.load_checkpoint()
         self.boxes = []
         self.box_index = 0
+        self.current_image = None
         self.history = []
 
         self.canvas = Canvas(root, width=300, height=300)
@@ -55,6 +59,39 @@ class AnnotatorGUI:
         self.root.bind("<Key>", self.key_press)
         self.load_next_image()
 
+    def load_checkpoint(self):
+        if os.path.exists(self.checkpoint_file):
+            with open(self.checkpoint_file, "r") as f:
+                data = json.load(f)
+                self.current_file_index = data.get("current_file_index", 0)
+                self.box_index = data.get("box_index", 0)
+                self.history = data.get("history", [])
+
+    def save_checkpoint(self):
+        data = {
+            "current_file_index": self.current_file_index,
+            "box_index": self.box_index,
+            "history": self.history
+        }
+        with open(self.checkpoint_file, "w") as f:
+            json.dump(data, f)
+
+    def load_checkpoint(self):
+        if os.path.exists(self.checkpoint_file):
+            with open(self.checkpoint_file, "r") as f:
+                data = json.load(f)
+                self.current_file_index = data.get("current_file_index", 0)
+                self.box_index = data.get("box_index", 0)
+                self.history = data.get("history", [])
+
+    def save_checkpoint(self):
+        data = {
+            "current_file_index": self.current_file_index,
+            "box_index": self.box_index,
+            "history": self.history
+        }
+        with open(self.checkpoint_file, "w") as f:
+            json.dump(data, f)
     def load_next_image(self):
         while self.current_file_index < len(self.image_files):
             filename = self.image_files[self.current_file_index]
@@ -89,11 +126,15 @@ class AnnotatorGUI:
         cv2.imwrite(save_path, self.current_crop)
         self.history.append((save_path, self.box_index, self.current_file_index))
         self.box_index += 1
+        self.save_checkpoint()
         self.show_box()
+        self.save_checkpoint()
 
     def skip(self):
         self.box_index += 1
+        self.save_checkpoint()
         self.show_box()
+        self.save_checkpoint()
 
     def undo(self):
         if not self.history:
@@ -102,8 +143,10 @@ class AnnotatorGUI:
         if os.path.exists(last_path):
             os.remove(last_path)
         self.box_index = last_box_index
+        self.save_checkpoint()
         self.current_file_index = last_file_index
         self.show_box()
+        self.save_checkpoint()
 
     def key_press(self, event):
         key = event.char.lower()
@@ -122,4 +165,4 @@ if __name__ == "__main__":
     try:
         root.mainloop()
     finally:
-        root.destroy() 
+        root.destroy()
