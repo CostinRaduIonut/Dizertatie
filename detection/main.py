@@ -42,41 +42,47 @@ def sort_boxes(boxes, y_threshold=15):
     """
     Sorts boxes top-to-bottom, then left-to-right within each row.
     boxes: list of [x1, y1, x2, y2]
-    Returns: sorted list of boxes
+    Returns: sorted list of boxes or empty list if no boxes
     """
-    # Convert to array for easier manipulation
+    if not boxes:
+        return []
+
     boxes = np.array(boxes)
+
+    if boxes.ndim != 2 or boxes.shape[1] != 4:
+        print("[Warning] Detected boxes have invalid shape:", boxes.shape)
+        return []
 
     # Sort by y1 (top coordinate)
     boxes = boxes[boxes[:, 1].argsort()]
 
-    # Group boxes by rows based on y1
     rows = []
     current_row = [boxes[0]]
     for box in boxes[1:]:
         if abs(box[1] - current_row[-1][1]) < y_threshold:
             current_row.append(box)
         else:
-            # Sort current row by x1
             rows.append(sorted(current_row, key=lambda b: b[0]))
             current_row = [box]
     rows.append(sorted(current_row, key=lambda b: b[0]))  # last row
 
-    # Flatten back into one list
     return [box.tolist() for row in rows for box in row]
 
 # Load images
-filenames = os.listdir("detection/detection_dataset/test/images/")
+filenames = os.listdir("braille_detectat/")
 # filenames = ["0a5e1b87-1554-4b50-8e67-4bae748b2ab8_png.rf.7ba2be5e0bed500ddb267b4ede3ef6d1.jpg"]
 # filenames = ["00c68b61-95cd-4a93-862f-a12b89f8be36_png.rf.1ec9431b21b23834d94a7bf1370b997f.jpg"]  # Test single image
 # filenames = ["0b999ef4-8c76-4313-9b65-4197c3c318de_png.rf.76f81a72c4d7871a31c5b89ca95d1a27.jpg"]
 # filenames = ["0d7bef26-e53e-4ce5-bc03-ab9f759566df_png.rf.2e92df16554cc8d90266100bbd05b364.jpg"]
-filenames = ["0aeaec4c-975f-4f81-83ce-9fbd6b546258_png.rf.2099a10504bef021af0c6d128391ab3e.jpg"]
+# filenames = ["0aeaec4c-975f-4f81-83ce-9fbd6b546258_png.rf.2099a10504bef021af0c6d128391ab3e.jpg"]
 
 for filename in filenames:
-    fullpath = f"detection/detection_dataset/test/images/{filename}"
+    fullpath = f"braille_detectat/{filename}"
     result = model.predict(source=fullpath)
     boxes_xyxy = result[0].boxes.xyxy.tolist()
+    if not boxes_xyxy:
+        print(f"[Info] No Braille boxes detected in {filename}. Skipping.")
+        continue
     boxes_xyxy = sort_boxes(boxes_xyxy)
     img = cv.imread(fullpath, cv.IMREAD_GRAYSCALE)
     im_height, im_width = img.shape
@@ -123,7 +129,9 @@ for filename in filenames:
         for circle in cnt_data:
             radius = circle[1]
             rect_area = circle[3]
-            if radius > 2 and (rect_area / img_area) < 0.95:
+            center = circle[0]
+            percent = rect_area / img_area
+            if radius > 2 and percent < 0.95 and center[0] > 4 and center[1] > 4:
                 circle_candidates.append(circle)
 
         for c in circle_candidates:
