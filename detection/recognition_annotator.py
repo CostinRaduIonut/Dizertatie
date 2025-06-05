@@ -119,4 +119,7 @@ if __name__ == "__main__":
     root = Tk()
     root.title("Braille Annotator")
     app = AnnotatorGUI(root)
-    root.mainloop()
+    try:
+        root.mainloop()
+    finally:
+        root.destroy() 
