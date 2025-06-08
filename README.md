@@ -5,7 +5,7 @@
 - Response type: JSON
 
 1. Run the following snippet:
-   `pip install -r requirements_braille.txt`
+   `pip install -r requirements.txt`
 
 2. go to detection -> main.py -> run it.
 
