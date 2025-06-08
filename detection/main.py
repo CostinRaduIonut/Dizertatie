@@ -1,5 +1,6 @@
 from flask import Flask, request
 from flask_restx import Api, Resource, reqparse
+from flask_cors import CORS
 import numpy as np
 import cv2 as cv
 from werkzeug.datastructures import FileStorage 
@@ -7,6 +8,7 @@ import base64
 from detection import process_image, model 
 
 app = Flask(__name__)
+CORS(app, supports_credentials=True)
 api = Api(app, doc="/docs")
 
 ns = api.namespace('braille', description='Braille operations')
@@ -29,7 +31,8 @@ class BrailleEndpoint(Resource):
         file_bytes = np.frombuffer(file.read(), np.uint8)
         img = cv.imdecode(file_bytes, cv.IMREAD_COLOR)
         text, img_result = process_image(img, model)
-        result_base64 = base64.b64encode(img_result).decode("utf-8")
+        _, buffer = cv.imencode('.png', img_result)
+        result_base64 = base64.b64encode(buffer).decode("utf-8")
         response = {
             "text" : text,
             "img_base64" : result_base64
