@@ -38,8 +38,8 @@ To process the result, maybe this example is useful:
       const data = await response.json();
 
       if (response.ok) {
-        setDecodedText(data.decoded_text);
-        setPreviewSrc(`data:image/jpeg;base64,${data.annotated_image_base64}`);
+        setDecodedText(data.text);
+        setPreviewSrc(`data:image/jpeg;base64,${data.img_base64}`);
       } else {
         alert(data.message || 'Failed to process image.');
       }
