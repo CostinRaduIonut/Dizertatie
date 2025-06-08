@@ -108,6 +108,6 @@ def process_image(img_array, model):
 
         full_text += row_text + "\n"
 
-    return full_text.strip(), img_display
+    return full_text.strip().upper(), img_display
 
 

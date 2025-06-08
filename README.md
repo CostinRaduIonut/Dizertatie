@@ -9,10 +9,10 @@
 
 You should only upload an image. The response looks like this:
 
-```
+```JSON
 {
     "text" : "YOUR TEXT HERE",
-    img_base64: [IMAGE_RESULT]
+    "img_base64": [IMAGE_RESULT]
 }
 ```
 
