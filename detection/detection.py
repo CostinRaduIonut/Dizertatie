@@ -4,10 +4,10 @@ import numpy as np
 import os
 
 # Constants
-MODEL_PATH = "runs/detect/train6_good/weights/best.pt"
+MODEL_PATH = "../runs/detect/train6_good/weights/best.pt"
 BRAILLE_DIR = "braille_detectat/"
 KERNEL = np.ones((3, 3), np.uint8)
-
+model = YOLO(MODEL_PATH)
 BRAILLE_DICT = {
     "100000": "a", "110000": "b", "100100": "c", "100110": "d", "100010": "e",
     "110100": "f", "110110": "g", "110010": "h", "010100": "i", "010110": "j",
@@ -72,18 +72,16 @@ def decode_braille(candidates, width, height):
     encoding = "".join("1" if (c, r) in temp else "0" for c, r in coordinates)
     return BRAILLE_DICT.get(encoding, "*")
 
-def process_image(path, model):
-    img = cv.imread(path, cv.IMREAD_GRAYSCALE)
-    if img is None:
-        print(f"[Error] Failed to load image: {path}")
-        return
-    img_display = cv.cvtColor(img.copy(), cv.COLOR_GRAY2BGR)
-    result = model.predict(source=path)
+def process_image(img_array, model):
+    img = cv.cvtColor(img_array, cv.COLOR_BGR2GRAY)  # Convert to grayscale
+    img_display = cv.cvtColor(img_array.copy(), cv.COLOR_BGR2RGB)  # For annotation
+
+    result = model.predict(source=img_array, imgsz=640, verbose=False)  # Direct image input
     boxes = result[0].boxes.xyxy.tolist()
     if not boxes:
-        print(f"[Info] No Braille boxes detected in {path}")
-        return
-    
+        print(f"[Info] No Braille boxes detected.")
+        return None
+
     rows = sort_boxes(boxes)
     full_text = ""
 
@@ -108,20 +106,8 @@ def process_image(path, model):
             cv.putText(img_display, char.upper(), (x1, y1 - 10), cv.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 2)
             prev_x2 = x2
 
-        full_text += row_text + "\n"  # Append the decoded row followed by newline
+        full_text += row_text + "\n"
 
-    print(f"[{os.path.basename(path)}] →\n{full_text}")
-    cv.imshow("Braille Output", img_display)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    return full_text.strip(), img_display
 
 
-def main():
-    model = YOLO(MODEL_PATH)
-    filenames = [f for f in os.listdir(BRAILLE_DIR) if f.lower().endswith((".jpg", ".png"))]
-    for fname in filenames:
-        fullpath = os.path.join(BRAILLE_DIR, fname)
-        process_image(fullpath, model)
-
-if __name__ == "__main__":
-    main()
