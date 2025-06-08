@@ -1,8 +1,8 @@
 # Dizertatie
 
-Route name: `/braille`
-Input type: file upload
-Response type: JSON
+- Route name: `/braille`
+- Input type: file upload
+- Response type: JSON
 
 1. Run the following snippet:
    `pip install -r requirements_braille.txt`
