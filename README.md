@@ -1,5 +1,9 @@
 # Dizertatie
 
+Route name: `/braille`
+Input type: file upload
+Response type: JSON
+
 1. Run the following snippet:
    `pip install -r requirements_braille.txt`
 
@@ -7,7 +11,7 @@
 
 ## Notes
 
-You should only upload an image. The response looks like this:
+Response after request:
 
 ```JSON
 {
