@@ -6,3 +6,5 @@ numpy
 ultralytics
 werkzeug
 Pillow
+uuid
+gtts
