@@ -1,7 +1,10 @@
 flask
 flask-restx
+flask-cors
 opencv-python
 numpy
 ultralytics
 werkzeug
 Pillow
+uuid
+gtts
