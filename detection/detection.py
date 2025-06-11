@@ -95,8 +95,8 @@ def process_image(img_array, model):
             cv.rectangle(img_display, (x1, y1), (x2, y2), (255, 0, 0), 2)
             candidates = extract_circles(braille_cell, img_area)
 
-            for (cx, cy), r in candidates:
-                cv.circle(img_display, (int(cx + x1), int(cy + y1)), r, (0, 255, 0), 2)
+            # for (cx, cy), r in candidates:
+            #     cv.circle(img_display, (int(cx + x1), int(cy + y1)), r, (0, 255, 0), 2)
 
             if prev_x2 is not None and (x1 - prev_x2) > ((x2 - x1) * 1.5):
                 row_text += " "
