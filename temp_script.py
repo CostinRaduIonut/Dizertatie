@@ -1,32 +1,30 @@
+import cv2
 import os
-import shutil
 
-# Directory where your images are located
-source_dir = "./temp"
+# Set your input and output directories
+input_dir = 'images_output/'
+output_dir = 'braille_detectat/'
 
-# Output directory
-output_dir = "./detection/recognition_dataset"
-
-# Make sure the output directory exists
+# Create output directory if it doesn't exist
 os.makedirs(output_dir, exist_ok=True)
 
-# List all files in the source directory
-all_files = [f for f in os.listdir(source_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
+# Supported image extensions
+image_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.tiff')
 
-for filename in all_files:
-    # Extract the class name prefix (e.g., "a1" or "b1")
-    class_code = filename.split('.')[0]  # removes extension and everything after
-    if not class_code:
-        continue
-    letter = class_code[0].lower()  # first character → 'a', 'b', etc.
+# Process all files in the input directory
+for filename in os.listdir(input_dir):
+    if filename.lower().endswith(image_extensions):
+        input_path = os.path.join(input_dir, filename)
+        output_path = os.path.join(output_dir, filename)
 
-    # Destination folder
-    class_folder = os.path.join(output_dir, letter)
-    os.makedirs(class_folder, exist_ok=True)
+        # Read and rotate the image
+        img = cv2.imread(input_path)
+        if img is None:
+            print(f"[Warning] Failed to load image: {filename}")
+            continue
 
-    # Move file
-    src_path = os.path.join(source_dir, filename)
-    dst_path = os.path.join(class_folder, filename)
-    shutil.move(src_path, dst_path)
+        rotated_img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
 
-print("Done. Files have been sorted into class folders.")
+        # Save the rotated image
+        cv2.imwrite(output_path, rotated_img)
+        print(f"Saved rotated image: {output_path}")
