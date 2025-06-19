@@ -121,16 +121,16 @@ def process_image(img_array, model):
 
         full_text += row_text + "\n"
     img_display = cv.resize(img_display, (512, 512))
-    cv.imshow("test", img_display)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+    # cv.imshow("test", img_display)
+    # cv.waitKey(0)
+    # cv.destroyAllWindows()
     return full_text.strip().upper(), img_display
 
 
-tt = os.listdir("braille_detectat/")
-r = "braille_detectat"
+# tt = os.listdir("braille_detectat/")
+# r = "braille_detectat"
 
-for t in tt:
-    img = cv.imread(f"{r}/{t}")
-    process_image(img, model) 
+# for t in tt:
+#     img = cv.imread(f"{r}/{t}")
+#     process_image(img, model) 
     
