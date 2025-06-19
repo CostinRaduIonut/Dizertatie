@@ -4,7 +4,7 @@ import numpy as np
 import cv2 as cv
 from werkzeug.datastructures import FileStorage 
 import base64
-from detection import process_image, model
+from detection_cnn import process_image, model
 from flask_cors import CORS
 from utils.speech import generate_speech
 from flask import send_file
