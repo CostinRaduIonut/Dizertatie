@@ -6,7 +6,7 @@ from werkzeug.datastructures import FileStorage
 import base64
 from detection_cnn import process_image, model
 from flask_cors import CORS
-from utils.speech import generate_speech
+# from utils.speech import generate_speech
 from flask import send_file
 
 
@@ -53,8 +53,9 @@ class BrailleEndpoint(Resource):
         if img is None:
             return {"message": "Invalid image format."}, 400
         if output_type == 'sound':
-            fname_voice = generate_speech(text)
-            return send_file(fname_voice, as_attachment=True, download_name=fname_voice)
+            return "test"
+            # fname_voice = generate_speech(text)
+            # return send_file(fname_voice, as_attachment=True, download_name=fname_voice)
         elif output_type == 'image':
             return response
 
