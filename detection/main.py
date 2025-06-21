@@ -6,7 +6,8 @@ from werkzeug.datastructures import FileStorage
 import base64
 from detection_cnn import process_image, model
 from flask_cors import CORS
-# from utils.speech import generate_speech
+from utils.speech import generate_speech
+from utils.autocorector import autocorrect
 from flask import send_file
 
 
@@ -33,6 +34,14 @@ upload_parser.add_argument(
     required=True,
     help='Specify "image" or "sound" output'
 )
+upload_parser.add_argument(
+    'check_spelling',
+    location='form',
+    type=bool,
+    required=False,
+    help='Enable autocorrect if true'
+)
+
 @ns.route('/')
 @api.expect(upload_parser)
 class BrailleEndpoint(Resource):
@@ -40,12 +49,15 @@ class BrailleEndpoint(Resource):
         args = upload_parser.parse_args()
         file = args['file']
         output_type = args['outputType']
+        check_spelling = args.get('check_spelling', False)
         file_bytes = np.frombuffer(file.read(), np.uint8)
         img = cv.imdecode(file_bytes, cv.IMREAD_COLOR)
         text, img_result = process_image(img, model)
+        if check_spelling and isinstance(text, str):
+            text = autocorrect(text)
         _, buffer = cv.imencode('.png', img_result)
         result_base64 = base64.b64encode(buffer).decode("utf-8")
-
+    
         response = {
             "text" : text,
             "img_base64" : result_base64
@@ -53,9 +65,8 @@ class BrailleEndpoint(Resource):
         if img is None:
             return {"message": "Invalid image format."}, 400
         if output_type == 'sound':
-            return "test"
-            # fname_voice = generate_speech(text)
-            # return send_file(fname_voice, as_attachment=True, download_name=fname_voice)
+            fname_voice = generate_speech(text)
+            return send_file(fname_voice, as_attachment=True, download_name=fname_voice)
         elif output_type == 'image':
             return response
 
